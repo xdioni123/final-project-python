@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Book - OmniLibrary</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <h1>Add New Book</h1>
+    <nav>
+        <a href="{{ url_for('admin.admin_dashboard') }}">Back to Dashboard</a>
+    </nav>
+
+    <form method="POST">
+        <label>Title:</label>
+        <input type="text" name="title" required><br><br>
+
+        <label>Author:</label>
+        <input type="text" name="author" required><br><br>
+
+        <label>Genre:</label>
+        <input type="text" name="genre" required><br><br>
+
+        <label>Type:</label>
+        <select name="book_type" required>
+            <option value="Novel">Novel</option>
+            <option value="Manga">Manga</option>
+            <option value="Manhwa">Manhwa</option>
+            <option value="Audiobook">Audiobook</option>
+        </select><br><br>
+
+        <label>Description:</label><br>
+        <textarea name="description" rows="4" cols="50"></textarea><br><br>
+
+        <label>Cover Image Path:</label>
+        <input type="text" name="cover_image"><br><br>
+
+        <label>Content Path:</label>
+        <input type="text" name="content_path"><br><br>
+
+        <label>Audio Path:</label>
+        <input type="text" name="audio_path"><br><br>
+
+        <button type="submit">Add Book</button>
+    </form>
+</body>
+</html>
