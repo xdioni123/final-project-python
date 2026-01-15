@@ -4,13 +4,15 @@ from models.user import User
 from models.book import Book
 from auth import login, register
 from admin import admin_panel
-from PIL import Image
 import os
 
-# Create tables if they don't exist
 Base.metadata.create_all(bind=engine)
 
-st.title("OmniLibrary")
+st.set_page_config(page_title="OmniLibrary", layout="wide")
+st.title("📚 OmniLibrary")
+
+if "selected_book_id" not in st.session_state:
+    st.session_state.selected_book_id = None
 
 menu = ["Home", "Browse Books", "Login", "Register", "Admin"]
 choice = st.sidebar.selectbox("Menu", menu)
@@ -23,62 +25,69 @@ if choice == "Home":
 
 elif choice == "Browse Books":
     tabs = st.tabs(["All", "Manga", "Manhwa", "Novels", "Audiobooks"])
-
     books = db.query(Book).all()
-
 
     with tabs[0]:
         st.subheader("All Books")
         for book in books:
-            st.write(f"**{book.title}** by {book.author}")
-            if book.book_type in ["Manga", "Manhwa"] and book.cover_path:
-                if os.path.exists(book.cover_path):
-                    st.image(book.cover_path, use_column_width=True)
-            elif book.book_type == "Novel" and book.content_path:
-                if os.path.exists(book.content_path):
-                    with open(book.content_path, "r", encoding="utf-8") as f:
-                        content = f.read()
-                    st.text_area(book.title, content, height=400)
-            elif book.book_type == "Audiobook" and book.audio_path:
-                if os.path.exists(book.audio_path):
-                    st.audio(book.audio_path)
+            col1, col2 = st.columns([1, 3])
 
+            with col1:
+                if book.cover_path and os.path.exists(book.cover_path):
+                    st.image(book.cover_path, width=150)
+
+            with col2:
+                st.markdown(f"### {book.title}")
+                st.write(f"Author: {book.author}")
+                st.write(f"Type: {book.book_type}")
+
+                if st.button("Open", key=f"open_{book.id}"):
+                    st.session_state.selected_book_id = book.id
 
     with tabs[1]:
-        st.subheader("Manga")
-        mangas = db.query(Book).filter(Book.book_type=="Manga").all()
-        for book in mangas:
-            st.write(f"**{book.title}** by {book.author}")
-            if book.cover_path and os.path.exists(book.cover_path):
-                st.image(book.cover_path, use_column_width=True)
+        for book in db.query(Book).filter(Book.book_type == "Manga").all():
+            st.write(book.title)
+            if st.button("Open", key=f"manga_{book.id}"):
+                st.session_state.selected_book_id = book.id
 
     with tabs[2]:
-        st.subheader("Manhwa")
-        manhwas = db.query(Book).filter(Book.book_type=="Manhwa").all()
-        for book in manhwas:
-            st.write(f"**{book.title}** by {book.author}")
-            if book.cover_path and os.path.exists(book.cover_path):
-                st.image(book.cover_path, use_column_width=True)
-
+        for book in db.query(Book).filter(Book.book_type == "Manhwa").all():
+            st.write(book.title)
+            if st.button("Open", key=f"manhwa_{book.id}"):
+                st.session_state.selected_book_id = book.id
 
     with tabs[3]:
-        st.subheader("Novels")
-        novels = db.query(Book).filter(Book.book_type=="Novel").all()
-        for book in novels:
-            st.write(f"**{book.title}** by {book.author}")
-            if book.content_path and os.path.exists(book.content_path):
-                with open(book.content_path, "r", encoding="utf-8") as f:
-                    content = f.read()
-                st.text_area(book.title, content, height=400)
-
+        for book in db.query(Book).filter(Book.book_type == "Novel").all():
+            st.write(book.title)
+            if st.button("Read", key=f"novel_{book.id}"):
+                st.session_state.selected_book_id = book.id
 
     with tabs[4]:
-        st.subheader("Audiobooks")
-        audios = db.query(Book).filter(Book.book_type=="Audiobook").all()
-        for book in audios:
-            st.write(f"**{book.title}** by {book.author}")
-            if book.audio_path and os.path.exists(book.audio_path):
-                st.audio(book.audio_path)
+        for book in db.query(Book).filter(Book.book_type == "Audiobook").all():
+            st.write(book.title)
+            if st.button("Listen", key=f"audio_{book.id}"):
+                st.session_state.selected_book_id = book.id
+
+    if st.session_state.selected_book_id:
+        selected_book = db.query(Book).filter(
+            Book.id == st.session_state.selected_book_id
+        ).first()
+
+        st.divider()
+        st.header(selected_book.title)
+
+        if selected_book.book_type in ["Manga", "Manhwa"]:
+            from utils.manga_reader import manga_reader
+            manga_reader(selected_book.content_path)
+
+        elif selected_book.book_type == "Novel":
+            if os.path.exists(selected_book.content_path):
+                with open(selected_book.content_path, "r", encoding="utf-8") as f:
+                    st.text(f.read())
+
+        elif selected_book.book_type == "Audiobook":
+            if os.path.exists(selected_book.audio_path):
+                st.audio(selected_book.audio_path)
 
 elif choice == "Login":
     login()
