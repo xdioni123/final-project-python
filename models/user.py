@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean
 from database import Base
-import hashlib
+from werkzeug.security import generate_password_hash, check_password_hash
 
 class User(Base):
     __tablename__ = "users"
@@ -11,7 +11,7 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
 
     def set_password(self, password):
-        self.password = hashlib.sha256(password.encode()).hexdigest()
+        self.password = generate_password_hash(password)
 
     def check_password(self, password):
-        return self.password == hashlib.sha256(password.encode()).hexdigest()
+        return check_password_hash(self.password, password)
