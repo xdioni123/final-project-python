@@ -6,14 +6,21 @@ from auth import login, register
 from admin import admin_panel
 import os
 
-# Create tables if they don't exist
+# ----------------------
+# Database setup
+# ----------------------
 Base.metadata.create_all(bind=engine)
+db = get_db()
 
+# ----------------------
 # Page setup
+# ----------------------
 st.set_page_config(page_title="OmniLibrary", layout="wide")
 st.title("📚 OmniLibrary")
 
-# Initialize session state
+# ----------------------
+# Session state
+# ----------------------
 if "selected_book_id" not in st.session_state:
     st.session_state.selected_book_id = None
 
@@ -26,80 +33,84 @@ if "user" not in st.session_state:
 if "is_admin" not in st.session_state:
     st.session_state.is_admin = False
 
-# Database session
-db = get_db()
-
 # ----------------------
-# Ensure admin user exists
+# Ensure default admin exists
 # ----------------------
-admin_user = db.query(User).filter(User.username == "admin").first()
-if not admin_user:
-    admin_user = User(username="admin")
-    admin_user.set_password("admin123")  # Change this password later
-    admin_user.is_admin = True
-    db.add(admin_user)
+admin = db.query(User).filter(User.username == "admin").first()
+if not admin:
+    admin = User(username="admin")
+    admin.set_password("admin123")
+    admin.is_admin = True
+    db.add(admin)
     db.commit()
     st.info("Default admin created: username='admin', password='admin123'")
 
+# ----------------------
 # Sidebar menu
+# ----------------------
 menu = ["Home", "Browse Books", "Login", "Register", "Admin"]
 choice = st.sidebar.selectbox("Menu", menu)
 
+# ----------------------
+# Helper: book card
+# ----------------------
+def book_card(book, key_prefix):
+    col1, col2 = st.columns([1, 3])
+
+    # ---- COVER IMAGE ----
+    with col1:
+        cover_path = book.cover_path
+        if cover_path and os.path.exists(cover_path):
+            st.image(cover_path, width=150)
+        else:
+            st.image("assets/no_cover.png", width=150)
+
+    # ---- INFO ----
+    with col2:
+        st.markdown(f"### {book.title}")
+        st.write(f"Author: {book.author}")
+        st.write(f"Type: {book.book_type}")
+
+        if st.button("Open", key=f"{key_prefix}_{book.id}"):
+            st.session_state.selected_book_id = book.id
+            st.session_state.page = "reader"
+            st.rerun()
+
 # =======================
-# Home Page
+# HOME
 # =======================
 if choice == "Home":
     st.subheader("Welcome to OmniLibrary")
-    st.write("Read novels, view manga/manhwa, and listen to audiobooks!")
+    st.write("Read novels, manga, manhwa, and listen to audiobooks!")
 
 # =======================
-# Browse Books Page
+# BROWSE BOOKS
 # =======================
 elif choice == "Browse Books" and st.session_state.page == "browse":
     tabs = st.tabs(["All", "Manga", "Manhwa", "Novels", "Audiobooks"])
-    books = db.query(Book).all()
 
-    def book_card(book, key_prefix):
-        col1, col2 = st.columns([1, 3])
-        with col1:
-            if book.cover_path and os.path.exists(book.cover_path):
-                st.image(book.cover_path, width=150)
-        with col2:
-            st.markdown(f"### {book.title}")
-            st.write(f"Author: {book.author}")
-            st.write(f"Type: {book.book_type}")
-            if st.button("Open", key=f"{key_prefix}_{book.id}"):
-                st.session_state.selected_book_id = book.id
-                st.session_state.page = "reader"
-                st.rerun()
-
-    # All Books
     with tabs[0]:
-        for book in books:
+        for book in db.query(Book).all():
             book_card(book, "all")
 
-    # Manga
     with tabs[1]:
         for book in db.query(Book).filter(Book.book_type == "Manga").all():
             book_card(book, "manga")
 
-    # Manhwa
     with tabs[2]:
         for book in db.query(Book).filter(Book.book_type == "Manhwa").all():
             book_card(book, "manhwa")
 
-    # Novels
     with tabs[3]:
         for book in db.query(Book).filter(Book.book_type == "Novel").all():
             book_card(book, "novel")
 
-    # Audiobooks
     with tabs[4]:
         for book in db.query(Book).filter(Book.book_type == "Audiobook").all():
             book_card(book, "audio")
 
 # =======================
-# Reader Page
+# READER PAGE
 # =======================
 elif choice == "Browse Books" and st.session_state.page == "reader":
     book = db.query(Book).filter(
@@ -111,41 +122,51 @@ elif choice == "Browse Books" and st.session_state.page == "reader":
         st.session_state.selected_book_id = None
         st.rerun()
 
+    # Show cover
+    if book.cover_path and os.path.exists(book.cover_path):
+        st.image(book.cover_path, width=250)
+    else:
+        st.image("assets/no_cover.png", width=250)
+
     st.header(book.title)
     st.caption(f"{book.author} • {book.book_type}")
     st.divider()
 
+    # Manga / Manhwa reader
     if book.book_type in ["Manga", "Manhwa"]:
         from utils.manga_reader import manga_reader
         manga_reader(book.content_path)
 
+    # Novel reader
     elif book.book_type == "Novel":
-        if os.path.exists(book.content_path):
+        if book.content_path and os.path.exists(book.content_path):
             with open(book.content_path, "r", encoding="utf-8") as f:
                 st.text(f.read())
 
+        # Optional audiobook for novels
+        if book.audio_path and os.path.exists(book.audio_path):
+            st.audio(book.audio_path)
+
+    # Audiobooks
     elif book.book_type == "Audiobook":
-        if os.path.exists(book.audio_path):
+        if book.audio_path and os.path.exists(book.audio_path):
             st.audio(book.audio_path)
 
 # =======================
-# Login Page
+# LOGIN / REGISTER
 # =======================
 elif choice == "Login":
     login()
 
-# =======================
-# Register Page
-# =======================
 elif choice == "Register":
     register()
 
 # =======================
-# Admin Page
+# ADMIN
 # =======================
 elif choice == "Admin":
-    if not st.session_state.get("is_admin"):
-        st.warning("⚠ You must be logged in as an admin to access this page.")
+    if not st.session_state.is_admin:
+        st.warning("Admin access required")
         login()
     else:
         admin_panel()
