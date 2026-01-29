@@ -87,7 +87,7 @@ if choice == "Home":
 # BROWSE BOOKS
 # =======================
 elif choice == "Browse Books" and st.session_state.page == "browse":
-    tabs = st.tabs(["All", "Manga", "Manhwa", "Novels", "Audiobooks"])
+    tabs = st.tabs(["All", "Manga", "Manhwa", "Novels"])
 
     with tabs[0]:
         for book in db.query(Book).all():
@@ -104,10 +104,6 @@ elif choice == "Browse Books" and st.session_state.page == "browse":
     with tabs[3]:
         for book in db.query(Book).filter(Book.book_type == "Novel").all():
             book_card(book, "novel")
-
-    with tabs[4]:
-        for book in db.query(Book).filter(Book.book_type == "Audiobook").all():
-            book_card(book, "audio")
 
 # =======================
 # READER PAGE
@@ -147,10 +143,6 @@ elif choice == "Browse Books" and st.session_state.page == "reader":
         if book.audio_path and os.path.exists(book.audio_path):
             st.audio(book.audio_path)
 
-    # Audiobooks
-    elif book.book_type == "Audiobook":
-        if book.audio_path and os.path.exists(book.audio_path):
-            st.audio(book.audio_path)
 
 # =======================
 # LOGIN / REGISTER

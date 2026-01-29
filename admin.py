@@ -12,10 +12,6 @@ def admin_panel():
     st.title("🛠 Admin Panel")
 
     tabs = st.tabs(["📚 Manage Books", "👤 Manage Users"])
-
-    # =========================
-    # 📚 BOOK MANAGEMENT
-    # =========================
     with tabs[0]:
         st.subheader("➕ Add New Book")
 
@@ -23,7 +19,7 @@ def admin_panel():
         author = st.text_input("Author", key="add_author")
         genre = st.text_input("Genre", key="add_genre")
         book_type = st.selectbox(
-            "Type", ["Novel", "Manga", "Manhwa", "Audiobook"], key="add_type"
+            "Type", ["Novel", "Manga", "Manhwa"], key="add_type"
         )
         cover_path = st.text_input("Cover Path", key="add_cover")
         content_path = st.text_input("Content Path", key="add_content")
@@ -46,9 +42,6 @@ def admin_panel():
 
         st.divider()
 
-        # -------------------------
-        # ✏ EDIT BOOK (SAFE)
-        # -------------------------
         st.subheader("✏ Edit Book")
 
         books = db.query(Book).all()
@@ -69,8 +62,8 @@ def admin_panel():
             new_genre = st.text_input("Genre", book.genre)
             new_book_type = st.selectbox(
                 "Type",
-                ["Novel", "Manga", "Manhwa", "Audiobook"],
-                index=["Novel", "Manga", "Manhwa", "Audiobook"].index(book.book_type)
+                ["Novel", "Manga", "Manhwa"],
+                index=["Novel", "Manga", "Manhwa"].index(book.book_type)
             )
             new_cover = st.text_input("Cover Path", book.cover_path or "")
             new_content = st.text_input("Content Path", book.content_path or "")
@@ -91,9 +84,6 @@ def admin_panel():
 
         st.divider()
 
-        # -------------------------
-        # 🗑 DELETE BOOK (SAFE)
-        # -------------------------
         st.subheader("🗑 Delete Book")
 
         if books:
