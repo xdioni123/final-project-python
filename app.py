@@ -36,19 +36,25 @@ if "is_admin" not in st.session_state:
 # ----------------------
 # Ensure default admin exists
 # ----------------------
-admin = db.query(User).filter(User.username == "admin").first()
-if not admin:
-    admin = User(username="admin")
-    admin.set_password("admin123")
-    admin.is_admin = True
-    db.add(admin)
+admin_user = db.query(User).filter(User.username == "admin").first()
+if not admin_user:
+    admin_user = User(username="admin")
+    admin_user.set_password("admin123")
+    admin_user.is_admin = True
+    db.add(admin_user)
     db.commit()
-    st.info("Default admin created: username='admin', password='admin123'")
 
 # ----------------------
-# Sidebar menu
+# Sidebar menu (DYNAMIC)
 # ----------------------
-menu = ["Home", "Browse Books", "Login", "Register", "Admin"]
+menu = ["Home", "Browse Books"]
+
+if st.session_state.user is None:
+    menu += ["Login", "Register"]
+else:
+    if st.session_state.is_admin:
+        menu.append("Admin")
+
 choice = st.sidebar.selectbox("Menu", menu)
 
 # ----------------------
@@ -57,15 +63,12 @@ choice = st.sidebar.selectbox("Menu", menu)
 def book_card(book, key_prefix):
     col1, col2 = st.columns([1, 3])
 
-    # ---- COVER IMAGE ----
     with col1:
-        cover_path = book.cover_path
-        if cover_path and os.path.exists(cover_path):
-            st.image(cover_path, width=150)
+        if book.cover_path and os.path.exists(book.cover_path):
+            st.image(book.cover_path, width=150)
         else:
             st.image("assets/no_cover.png", width=150)
 
-    # ---- INFO ----
     with col2:
         st.markdown(f"### {book.title}")
         st.write(f"Author: {book.author}")
@@ -118,7 +121,6 @@ elif choice == "Browse Books" and st.session_state.page == "reader":
         st.session_state.selected_book_id = None
         st.rerun()
 
-    # Show cover
     if book.cover_path and os.path.exists(book.cover_path):
         st.image(book.cover_path, width=250)
     else:
@@ -128,21 +130,17 @@ elif choice == "Browse Books" and st.session_state.page == "reader":
     st.caption(f"{book.author} • {book.book_type}")
     st.divider()
 
-    # Manga / Manhwa reader
     if book.book_type in ["Manga", "Manhwa"]:
         from utils.manga_reader import manga_reader
         manga_reader(book.content_path)
 
-    # Novel reader
     elif book.book_type == "Novel":
         if book.content_path and os.path.exists(book.content_path):
             with open(book.content_path, "r", encoding="utf-8") as f:
                 st.text(f.read())
 
-        # Optional audiobook for novels
         if book.audio_path and os.path.exists(book.audio_path):
             st.audio(book.audio_path)
-
 
 # =======================
 # LOGIN / REGISTER
@@ -157,8 +155,4 @@ elif choice == "Register":
 # ADMIN
 # =======================
 elif choice == "Admin":
-    if not st.session_state.is_admin:
-        st.warning("Admin access required")
-        login()
-    else:
-        admin_panel()
+    admin_panel()
