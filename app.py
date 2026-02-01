@@ -4,6 +4,7 @@ from models.user import User
 from models.book import Book
 from auth import login, register
 from admin import admin_panel
+from models.user_library import UserLibrary
 import os
 
 # ----------------------
@@ -55,7 +56,15 @@ else:
     if st.session_state.is_admin:
         menu.append("Admin")
 
-choice = st.sidebar.selectbox("Menu", menu)
+if "menu_choice" not in st.session_state:
+    st.session_state.menu_choice = "Home"
+
+choice = st.sidebar.selectbox(
+    "Menu",
+    menu,
+    index=menu.index(st.session_state.menu_choice)
+)
+
 
 # ----------------------
 # Helper: book card
@@ -83,9 +92,83 @@ def book_card(book, key_prefix):
 # HOME
 # =======================
 if choice == "Home":
-    st.subheader("Welcome to OmniLibrary")
-    st.write("Read novels, manga, manhwa, and listen to audiobooks!")
 
+    # ---------- HERO ----------
+    st.markdown(
+        """
+        <div style="text-align:center; padding:40px 0;">
+            <h1>📚 OmniLibrary</h1>
+            <h4 style="color:gray;">
+                Read novels, manga, manhwa & listen to audiobooks — all in one place
+            </h4>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # ---------- USER SECTION ----------
+    if st.session_state.user:
+        st.subheader("👋 Welcome back")
+        st.write("Continue exploring your library or discover something new.")
+
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("📚 Browse Books"):
+                st.session_state.page = "browse"
+                st.rerun()
+
+        with col_b:
+            st.info("📌 Bookmarks & progress coming soon")
+
+    else:
+        st.subheader("✨ Get Started")
+        st.write("Create an account to track reading progress, rate books, and build your library.")
+
+        col_a, col_b = st.columns(2)
+        with col_a:
+            if st.button("🔐 Login"):
+                st.session_state.menu_choice = "Login"
+                st.rerun()
+
+        with col_b:
+            if st.button("📚 Browse Books"):
+                st.session_state.menu_choice = "Browse Books"
+                st.session_state.page = "browse"
+                st.rerun()
+
+
+    st.divider()
+
+    # ---------- FEATURED BOOKS ----------
+    st.subheader("🔥 Featured Books")
+
+    featured_books = db.query(Book).limit(4).all()
+
+    if not featured_books:
+        st.warning("No books available yet.")
+    else:
+        cols = st.columns(len(featured_books))
+        for col, book in zip(cols, featured_books):
+            with col:
+                if book.cover_path and os.path.exists(book.cover_path):
+                    st.image(book.cover_path, use_container_width=True)
+                else:
+                    st.image("assets/no_cover.png", use_container_width=True)
+
+                st.markdown(f"**{book.title}**")
+                st.caption(book.author)
+
+                if st.button("Open", key=f"home_open_{book.id}"):
+                    st.session_state.selected_book_id = book.id
+                    st.session_state.menu_choice = "Browse Books"
+                    st.session_state.page = "reader"
+                    st.rerun()
+
+
+    st.divider()
+
+    # ---------- FOOTER ----------
+    st.caption("© OmniLibrary • Read more, discover more 📖")
 # =======================
 # BROWSE BOOKS
 # =======================
