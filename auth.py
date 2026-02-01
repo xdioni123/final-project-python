@@ -1,41 +1,44 @@
-from fastapi import APIRouter
-from pydantic import BaseModel
-from database import get_db
-from models.user import User
-from sqlalchemy.exc import IntegrityError
+import streamlit as st
+import requests
 
-router = APIRouter(prefix="/auth")
-
-class UserData(BaseModel):
-    username: str
-    password: str
+API_URL = "http://127.0.0.1:8000/auth"
 
 
-@router.post("/register")
-def register_user(data: UserData):
-    db = get_db()
+def login():
+    st.subheader("Login")
 
-    user = User(username=data.username)
-    user.set_password(data.password)
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
 
-    try:
-        db.add(user)
-        db.commit()
-        return {"status": "success"}
-    except IntegrityError:
-        db.rollback()
-        return {"status": "error", "message": "Username already exists"}
+    if st.button("Login"):
+        res = requests.post(
+            f"{API_URL}/login",
+            json={"username": username, "password": password}
+        )
+
+        if res.status_code == 200:
+            data = res.json()
+            st.session_state.user = data["username"]
+            st.session_state.is_admin = data["is_admin"]
+            st.success("Logged in!")
+            st.rerun()
+        else:
+            st.error(res.json()["detail"])
 
 
-@router.post("/login")
-def login_user(data: UserData):
-    db = get_db()
-    user = db.query(User).filter(User.username == data.username).first()
+def register():
+    st.subheader("Register")
 
-    if user and user.check_password(data.password):
-        return {
-            "status": "success",
-            "is_admin": user.is_admin
-        }
+    username = st.text_input("Username")
+    password = st.text_input("Password", type="password")
 
-    return {"status": "error"}
+    if st.button("Register"):
+        res = requests.post(
+            f"{API_URL}/register",
+            json={"username": username, "password": password}
+        )
+
+        if res.status_code == 200:
+            st.success("Account created! You can now log in.")
+        else:
+            st.error(res.json()["detail"])
